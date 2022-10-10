@@ -43,6 +43,15 @@ static int c_parse_true(c_context* c, c_value* v){
     return C_PARSE_OK;
 }
 
+static int c_parse_false(c_context* c, c_value* v){
+    EXCEPT(c, 'f');
+    if (c->json[0] != 'a' || c->json[1] != 'l' || c->json[2] != 's' || c->json[3] != 'e')
+        return C_PARSE_INVALID_VALUE;
+    c->json += 4;
+    v->type = C_FALSE;
+    return C_PARSE_OK;
+}
+
 static int c_parse_value(c_context* c, c_value* v)
 {
     switch (*c->json)
@@ -51,6 +60,8 @@ static int c_parse_value(c_context* c, c_value* v)
         return c_parse_null(c, v);
     case 't':
         return c_parse_true(c, v);
+    case 'f':
+        return c_parse_false(c, v);
     case '\0':
         return C_PARSE_EXPECT_VALUE;
     default:

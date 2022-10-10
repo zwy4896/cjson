@@ -52,6 +52,17 @@ static int c_parse_false(c_context* c, c_value* v){
     return C_PARSE_OK;
 }
 
+static int c_parse_number(c_context* c, c_value* v) {
+    char* end;
+    /* \TODO validate number */
+    v->n = strtod(c->json, &end);
+    if (c->json == end)
+        return C_PARSE_INVALID_VALUE;
+    c->json = end;
+    v->type = C_NUMBER;
+    return C_PARSE_OK;
+}
+
 static int c_parse_value(c_context* c, c_value* v)
 {
     switch (*c->json)
@@ -65,9 +76,10 @@ static int c_parse_value(c_context* c, c_value* v)
     case '\0':
         return C_PARSE_EXPECT_VALUE;
     default:
-        return C_PARSE_INVALID_VALUE;
+        return c_parse_number(c, v);
     }
 }
+
 int c_parse(c_value* v, const char* json)
 {
     c_context c;
@@ -78,8 +90,10 @@ int c_parse(c_value* v, const char* json)
     c_parse_whitespace(&c);
     if((ret = c_parse_value(&c, v)) == C_PARSE_OK){
         c_parse_whitespace(&c);
-        if (*c.json != '\0')
+        if (*c.json != '\0'){
+            v->type = C_NULL;
             ret = C_PARSE_ROOT_NOT_SINGULAR;
+        }
     }
     return ret;
 }
@@ -88,4 +102,9 @@ c_type c_get_type(const c_value* v)
 {
     assert(v != NULL);
     return v->type;
+}
+
+double c_get_number(const c_value* v){
+    assert(v != NULL && v->type == C_NUMBER);
+    return v->n;
 }

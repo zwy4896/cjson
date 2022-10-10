@@ -19,6 +19,24 @@ static int test_pass = 0;
     } while(0)
 
 #define EXPECT_EQ_INT(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%d")
+#define EXPECT_EQ_DOUBLE(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%.17g")
+
+#define TEST_NUMBER(expect, json)\
+    do\
+    {\
+        c_value v;\
+        EXPECT_EQ_INT(C_PARSE_OK, c_parse(&v, json));\
+        EXPECT_EQ_INT(C_NUMBER, c_get_type(&v));\
+        EXPECT_EQ_DOUBLE(expect, c_get_number(&v));\
+    } while (0)
+
+#define TEST_ERROR(error, json)\
+    do{\
+        c_value v;\
+        v.type=C_FALSE;\
+        EXPECT_EQ_INT(error, c_parse(&v, json));\
+        EXPECT_EQ_INT(C_NULL, c_get_type(&v));\
+    }while (0)
 
 static void test_parse_null() {
     c_value v;
@@ -42,42 +60,75 @@ static void test_parse_false(){
 }
 
 static void test_parse_expect_value() {
-    c_value v;
-
-    v.type = C_FALSE;
-    EXPECT_EQ_INT(C_PARSE_EXPECT_VALUE, c_parse(&v, ""));
-    EXPECT_EQ_INT(C_NULL, c_get_type(&v));
-
-    v.type = C_FALSE;
-    EXPECT_EQ_INT(C_PARSE_EXPECT_VALUE, c_parse(&v, " "));
-    EXPECT_EQ_INT(C_NULL, c_get_type(&v));
+    TEST_ERROR(C_PARSE_EXPECT_VALUE, "");
+    TEST_ERROR(C_PARSE_EXPECT_VALUE, " ");
 }
 
 static void test_parse_invalid_value() {
-    c_value v;
-    v.type = C_FALSE;
-    EXPECT_EQ_INT(C_PARSE_INVALID_VALUE, c_parse(&v, "nul"));
-    EXPECT_EQ_INT(C_NULL, c_get_type(&v));
+    TEST_ERROR(C_PARSE_INVALID_VALUE, "nul");
+    TEST_ERROR(C_PARSE_INVALID_VALUE, "?");
 
-    v.type = C_FALSE;
-    EXPECT_EQ_INT(C_PARSE_INVALID_VALUE, c_parse(&v, "?"));
-    EXPECT_EQ_INT(C_NULL, c_get_type(&v));
+    #if 0
+        /* invalid number */
+        TEST_ERROR(C_PARSE_INVALID_VALUE, "+0");
+        TEST_ERROR(C_PARSE_INVALID_VALUE, "+1");
+        TEST_ERROR(C_PARSE_INVALID_VALUE, ".123"); /* at least one digit before '.' */
+        TEST_ERROR(C_PARSE_INVALID_VALUE, "1.");   /* at least one digit after '.' */
+        TEST_ERROR(C_PARSE_INVALID_VALUE, "INF");
+        TEST_ERROR(C_PARSE_INVALID_VALUE, "inf");
+        TEST_ERROR(C_PARSE_INVALID_VALUE, "NAN");
+        TEST_ERROR(C_PARSE_INVALID_VALUE, "nan");
+    #endif
 }
 
 static void test_parse_root_not_singular() {
-    c_value v;
-    v.type = C_FALSE;
-    EXPECT_EQ_INT(C_PARSE_ROOT_NOT_SINGULAR, c_parse(&v, "null x"));
-    EXPECT_EQ_INT(C_NULL, c_get_type(&v));
+    TEST_ERROR(C_PARSE_ROOT_NOT_SINGULAR, "null x");
+    #if 0
+        /* invalid number */
+        TEST_ERROR(C_PARSE_ROOT_NOT_SINGULAR, "0123"); /* after zero should be '.' , 'E' , 'e' or nothing */
+        TEST_ERROR(C_PARSE_ROOT_NOT_SINGULAR, "0x0");
+        TEST_ERROR(C_PARSE_ROOT_NOT_SINGULAR, "0x123");
+    #endif
+}
+
+static void test_parse_number_too_big(){
+    #if 0
+        TEST_ERROR(C_PARSE_NUMBER_TOO_BIG, "1e309");
+        TEST_ERROR(C_PARSE_NUMBER_TOO_BIG, "-1e309");
+    #endif
+}
+
+static void test_parse_number() {
+    TEST_NUMBER(0.0, "0");
+    TEST_NUMBER(0.0, "-0");
+    TEST_NUMBER(0.0, "-0.0");
+    TEST_NUMBER(1.0, "1");
+    TEST_NUMBER(-1.0, "-1");
+    TEST_NUMBER(1.5, "1.5");
+    TEST_NUMBER(-1.5, "-1.5");
+    TEST_NUMBER(3.1416, "3.1416");
+    TEST_NUMBER(1E10, "1E10");
+    TEST_NUMBER(1e10, "1e10");
+    TEST_NUMBER(1E+10, "1E+10");
+    TEST_NUMBER(1E-10, "1E-10");
+    TEST_NUMBER(-1E10, "-1E10");
+    TEST_NUMBER(-1e10, "-1e10");
+    TEST_NUMBER(-1E+10, "-1E+10");
+    TEST_NUMBER(-1E-10, "-1E-10");
+    TEST_NUMBER(1.234E+10, "1.234E+10");
+    TEST_NUMBER(1.234E-10, "1.234E-10");
+    TEST_NUMBER(0.0, "1e-10000"); /* must underflow */
 }
 
 static void test_parse() {
     test_parse_null();
     test_parse_true();
     test_parse_false();
+    test_parse_number();
     test_parse_expect_value();
     test_parse_invalid_value();
     test_parse_root_not_singular();
+    test_parse_number_too_big();
 }
 
 int main() {

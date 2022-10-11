@@ -1,6 +1,6 @@
 #ifndef CJSON_H__
 #define CJSON_H__
-
+#include <stdlib.h>
 typedef enum
 {
     C_NULL,
@@ -14,7 +14,11 @@ typedef enum
 
 typedef struct
 {
-    double n;
+    union
+    {
+        struct{char* s; size_t len;};
+        double n;
+    };
     c_type type;
 }c_value;
 

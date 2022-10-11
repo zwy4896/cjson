@@ -1,7 +1,7 @@
 #include "cjson.h"
 #include <assert.h>
-#include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #define EXCEPT(c, ch)             \
     do                            \
@@ -120,4 +120,21 @@ c_type c_get_type(const c_value* v)
 double c_get_number(const c_value* v){
     assert(v != NULL && v->type == C_NUMBER);
     return v->n;
+}
+
+void c_free(c_value* v){
+    assert(v!= NULL);
+    if(v->type == C_STRING)
+        free(v->s);
+    v->type = C_NULL;
+}
+
+void c_set_string(c_value* v, const char* s, size_t len){
+    assert(v != NULL && (s != NULL || len == 0));
+    c_free(v);
+    v->s = (char*)malloc(len + 1);
+    memcpy(v->s, s, len);
+    v->s[len] = '\0';
+    v->len = len;
+    v->type = C_STRING;
 }

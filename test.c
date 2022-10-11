@@ -41,6 +41,8 @@ static int test_pass = 0;
         EXPECT_EQ_INT(C_NULL, c_get_type(&v));   \
     } while (0);
 
+#define c_init(v) do { (v)->type = LEPT_NULL; } while(0)
+
 static void test_parse_null()
 {
     c_value v;

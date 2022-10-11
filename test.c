@@ -7,38 +7,42 @@ static int main_ret = 0;
 static int test_count = 0;
 static int test_pass = 0;
 
-#define EXPECT_EQ_BASE(equality, expect, actual, format) \
-    do {\
-        test_count++;\
-        if (equality)\
-            test_pass++;\
-        else {\
-            fprintf(stderr, "%s:%d: expect: " format " actual: " format "\n", __FILE__, __LINE__, expect, actual);\
-            main_ret = 1;\
-        }\
-    } while(0)
+#define EXPECT_EQ_BASE(equality, expect, actual, format)                                                           \
+    do                                                                                                             \
+    {                                                                                                              \
+        test_count++;                                                                                              \
+        if (equality)                                                                                              \
+            test_pass++;                                                                                           \
+        else                                                                                                       \
+        {                                                                                                          \
+            fprintf(stderr, "%s:%d: expect: " format " actual: " format "\n", __FILE__, __LINE__, expect, actual); \
+            main_ret = 1;                                                                                          \
+        }                                                                                                          \
+    } while (0);
 
 #define EXPECT_EQ_INT(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%d")
 #define EXPECT_EQ_DOUBLE(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%.17g")
 
-#define TEST_NUMBER(expect, json)\
-    do\
-    {\
-        c_value v;\
-        EXPECT_EQ_INT(C_PARSE_OK, c_parse(&v, json));\
-        EXPECT_EQ_INT(C_NUMBER, c_get_type(&v));\
-        EXPECT_EQ_DOUBLE(expect, c_get_number(&v));\
-    } while (0)
+#define TEST_NUMBER(expect, json)                     \
+    do                                                \
+    {                                                 \
+        c_value v;                                    \
+        EXPECT_EQ_INT(C_PARSE_OK, c_parse(&v, json)); \
+        EXPECT_EQ_INT(C_NUMBER, c_get_type(&v));      \
+        EXPECT_EQ_DOUBLE(expect, c_get_number(&v));   \
+    } while (0);
 
-#define TEST_ERROR(error, json)\
-    do{\
-        c_value v;\
-        v.type=C_FALSE;\
-        EXPECT_EQ_INT(error, c_parse(&v, json));\
-        EXPECT_EQ_INT(C_NULL, c_get_type(&v));\
-    }while (0)
+#define TEST_ERROR(error, json)                  \
+    do                                           \
+    {                                            \
+        c_value v;                               \
+        v.type = C_FALSE;                        \
+        EXPECT_EQ_INT(error, c_parse(&v, json)); \
+        EXPECT_EQ_INT(C_NULL, c_get_type(&v));   \
+    } while (0);
 
-static void test_parse_null() {
+static void test_parse_null()
+{
     c_value v;
     v.type = C_FALSE;
     EXPECT_EQ_INT(C_PARSE_OK, c_parse(&v, "null"));

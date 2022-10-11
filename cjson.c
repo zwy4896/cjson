@@ -24,31 +24,14 @@ static void c_parse_whitespace(c_context* c)
     c->json = p;
 }
 
-static int c_parse_null(c_context* c, c_value* v)
-{
-    EXCEPT(c, 'n');
-    if (c->json[0] != 'u' || c->json[1] != 'l' || c->json[2] != 'l')
+static int c_parse_literal(c_context* c, c_value* v, const char* literal, c_type type){
+    size_t i;
+    EXCEPT(c, literal[0]);
+    for (i = 0; literal[i + 1]; i++)
+    if(c->json[i] != literal[i+1])
         return C_PARSE_INVALID_VALUE;
-    c->json += 3;
-    v->type = C_NULL;
-    return C_PARSE_OK;
-}
-
-static int c_parse_true(c_context* c, c_value* v){
-    EXCEPT(c, 't');
-    if (c->json[0] != 'r' || c->json[1] != 'u' || c->json[2] != 'e')
-        return C_PARSE_INVALID_VALUE;
-    c->json += 3;
-    v->type = C_TRUE;
-    return C_PARSE_OK;
-}
-
-static int c_parse_false(c_context* c, c_value* v){
-    EXCEPT(c, 'f');
-    if (c->json[0] != 'a' || c->json[1] != 'l' || c->json[2] != 's' || c->json[3] != 'e')
-        return C_PARSE_INVALID_VALUE;
-    c->json += 4;
-    v->type = C_FALSE;
+    c->json += i;
+    v->type = type;
     return C_PARSE_OK;
 }
 
@@ -68,11 +51,11 @@ static int c_parse_value(c_context* c, c_value* v)
     switch (*c->json)
     {
     case 'n':
-        return c_parse_null(c, v);
+        return c_parse_literal(c, v, "null", C_NULL);
     case 't':
-        return c_parse_true(c, v);
+        return c_parse_literal(c, v, "true", C_TRUE);
     case 'f':
-        return c_parse_false(c, v);
+        return c_parse_literal(c, v, "false", C_FALSE);
     case '\0':
         return C_PARSE_EXPECT_VALUE;
     default:

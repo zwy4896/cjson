@@ -1,6 +1,7 @@
 #include "cjson.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define EXCEPT(c, ch)             \
     do                            \
@@ -9,7 +10,10 @@
         c->json++;                \
     } while (0);
 
-typedef struct 
+#define ISDIGIT(ch) ((ch) >= '0' && (ch) <= '9')
+#define ISDIGIT1TO9(ch) ((ch) >= '1' && (ch) <= '9')
+
+typedef struct
 {
     const char *json;
 }c_context;
@@ -36,13 +40,39 @@ static int c_parse_literal(c_context* c, c_value* v, const char* literal, c_type
 }
 
 static int c_parse_number(c_context* c, c_value* v) {
-    char* end;
-    /* \TODO validate number */
-    v->n = strtod(c->json, &end);
-    if (c->json == end)
-        return C_PARSE_INVALID_VALUE;
-    c->json = end;
+    const char *p = c->json;
+    if(*p == '-')
+        p++;
+    if(*p == '0')
+        p++;
+    else{
+        if(!ISDIGIT1TO9(*p))
+            return C_PARSE_INVALID_VALUE;
+        for (p++; ISDIGIT(*p); p++)
+            ;
+    }
+    if(*p == '.'){
+        p++;
+        if(!ISDIGIT(*p))
+            return C_PARSE_INVALID_VALUE;
+        for (p++; ISDIGIT(*p); p++)
+            ;
+    }
+    if(*p == 'e' || *p == 'E'){
+        p++;
+        if (*p == '+' || *p == '-')
+            p++;
+        if (!ISDIGIT(*p))
+            return C_PARSE_INVALID_VALUE;
+        for (p++; ISDIGIT(*p); p++)
+            ;
+    }
+    v->n = strtod(c->json, NULL);
+    if (v->n == HUGE_VAL || v->n == -HUGE_VAL)
+        return C_PARSE_NUMBER_TOO_BIG;
     v->type = C_NUMBER;
+    c->json = p;
+
     return C_PARSE_OK;
 }
 

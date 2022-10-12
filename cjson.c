@@ -16,7 +16,9 @@
 typedef struct
 {
     const char *json;
-}c_context;
+    char *stack;
+    size_t size, top;
+} c_context;
 
 static void c_parse_whitespace(c_context* c)
 {
@@ -99,7 +101,9 @@ int c_parse(c_value* v, const char* json)
     int ret;
     assert(v != NULL);
     c.json = json;
-    v->type = C_NULL;
+    c.stack = NULL;
+    c.size = c.top = 0;
+    c_init(v);
     c_parse_whitespace(&c);
     if((ret = c_parse_value(&c, v)) == C_PARSE_OK){
         c_parse_whitespace(&c);
@@ -108,6 +112,8 @@ int c_parse(c_value* v, const char* json)
             ret = C_PARSE_ROOT_NOT_SINGULAR;
         }
     }
+    assert(c.top == 0);
+    free(c.stack);
     return ret;
 }
 

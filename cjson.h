@@ -31,7 +31,8 @@ enum
     C_PARSE_EXPECT_VALUE,
     C_PARSE_INVALID_VALUE,
     C_PARSE_ROOT_NOT_SINGULAR,
-    C_PARSE_NUMBER_TOO_BIG
+    C_PARSE_NUMBER_TOO_BIG,
+    C_PARSE_MISS_QUOTATION_MARK
 };
 
 int c_parse(c_value *v, const char *json);

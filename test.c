@@ -22,6 +22,8 @@ static int test_pass = 0;
 
 #define EXPECT_EQ_INT(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%d")
 #define EXPECT_EQ_DOUBLE(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%.17g")
+#define EXPECT_EQ_STRING(expect, actual, alength) \
+    EXPECT_EQ_BASE(sizeof(expect) - 1 == (alength) && memcmp(expect, actual, alength) == 0, expect, actual, "%s")
 
 #define TEST_NUMBER(expect, json)                     \
     do                                                \
@@ -30,6 +32,17 @@ static int test_pass = 0;
         EXPECT_EQ_INT(C_PARSE_OK, c_parse(&v, json)); \
         EXPECT_EQ_INT(C_NUMBER, c_get_type(&v));      \
         EXPECT_EQ_DOUBLE(expect, c_get_number(&v));   \
+    } while (0);
+
+#define TEST_STRING(except, json)                                            \
+    do                                                                       \
+    {                                                                        \
+        c_value v;                                                           \
+        c_init(&v);                                                          \
+        EXPECT_EQ_INT(C_PARSE_OK, c_parse(&v, json));                        \
+        EXPECT_EQ_INT(C_STRING, c_get_type(&v));                             \
+        EXPECT_EQ_STRING(except, c_get_string(&v), c_get_string_length(&v)); \
+        c_free(&v);                                                          \
     } while (0);
 
 #define TEST_ERROR(error, json)                  \
@@ -41,6 +54,12 @@ static int test_pass = 0;
         EXPECT_EQ_INT(C_NULL, c_get_type(&v));   \
     } while (0);
 
+#define c_init(v)              \
+    do                         \
+    {                          \
+        (v)->type = C_NULL; \
+    } while (0);
+
 static void test_parse_null()
 {
     c_value v;
@@ -49,6 +68,10 @@ static void test_parse_null()
     EXPECT_EQ_INT(C_NULL, c_get_type(&v));
 }
 
+static void test_parse_string(){
+    TEST_STRING("", "\"\"");
+    TEST_STRING("hello", "\"hello\"");
+}
 static void test_parse_true(){
     c_value v;
     v.type = C_FALSE;
@@ -133,6 +156,7 @@ static void test_parse() {
     test_parse_invalid_value();
     test_parse_root_not_singular();
     test_parse_number_too_big();
+    test_parse_string();
 }
 
 int main() {

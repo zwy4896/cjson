@@ -1,7 +1,11 @@
 #include "cjson.h"
 #include <assert.h>
-#include <stdlib.h>
 #include <math.h>
+#include <string.h>
+
+#ifndef C_PARSE_STACK_INIT_SIZE
+#define C_PARSE_STACK_INIT_SIZE 256
+#endif
 
 #define EXCEPT(c, ch)             \
     do                            \
@@ -12,12 +16,60 @@
 
 #define ISDIGIT(ch) ((ch) >= '0' && (ch) <= '9')
 #define ISDIGIT1TO9(ch) ((ch) >= '1' && (ch) <= '9')
+#define PUTC(c, ch) do { *(char*)c_context_push(c, sizeof(char)) = (ch); } while(0)
 
 typedef struct
 {
     const char *json;
-}c_context;
+    char *stack;
+    size_t size, top;
+} c_context;
 
+static void* c_context_push(c_context* c, size_t size){
+    void *ret;
+    assert(size > 0);
+    if(c->top+size >= c->size){
+        if (c->size == 0)
+            c->size = C_PARSE_STACK_INIT_SIZE;
+        while (c->top+size >= c->size)
+        {
+            c->size += c->size >> 1;
+        }
+        c->stack = (char *)realloc(c->stack, c->size);
+    }
+    ret = c->stack + c->top;
+    c->top += size;
+    return ret;
+}
+
+static void* c_context_pop(c_context* c, size_t size){
+    assert(c->top >= size);
+    return c->stack + (c->top -= size);
+}
+
+static int c_parse_string(c_context* c, c_value* v){
+    size_t head = c->top, len;
+    const char *p;
+    EXCEPT(c, '\"');
+    p = c->json;
+    for (;;)
+    {
+        char ch = *p++;
+        switch (ch)
+        {
+        case '\"':
+            len = c->top - head;
+            c_set_string(v, (const char *)c_context_pop(c, len), len);
+            c->json = p;
+            return C_PARSE_OK;
+        case '\0':
+            c->top = head;
+            return C_PARSE_MISS_QUOTATION_MARK;
+        default:
+            PUTC(c, ch);
+        }
+    }
+}
 static void c_parse_whitespace(c_context* c)
 {
     const char *p = c->json;
@@ -88,6 +140,8 @@ static int c_parse_value(c_context* c, c_value* v)
         return c_parse_literal(c, v, "false", C_FALSE);
     case '\0':
         return C_PARSE_EXPECT_VALUE;
+    case '"':
+        return c_parse_string(c, v);
     default:
         return c_parse_number(c, v);
     }
@@ -99,7 +153,9 @@ int c_parse(c_value* v, const char* json)
     int ret;
     assert(v != NULL);
     c.json = json;
-    v->type = C_NULL;
+    c.stack = NULL;
+    c.size = c.top = 0;
+    c_init(v);
     c_parse_whitespace(&c);
     if((ret = c_parse_value(&c, v)) == C_PARSE_OK){
         c_parse_whitespace(&c);
@@ -108,6 +164,8 @@ int c_parse(c_value* v, const char* json)
             ret = C_PARSE_ROOT_NOT_SINGULAR;
         }
     }
+    assert(c.top == 0);
+    free(c.stack);
     return ret;
 }
 
@@ -120,4 +178,31 @@ c_type c_get_type(const c_value* v)
 double c_get_number(const c_value* v){
     assert(v != NULL && v->type == C_NUMBER);
     return v->n;
+}
+
+void c_free(c_value* v){
+    assert(v!= NULL);
+    if(v->type == C_STRING)
+        free(v->s);
+    v->type = C_NULL;
+}
+
+void c_set_string(c_value* v, const char* s, size_t len){
+    assert(v != NULL && (s != NULL || len == 0));
+    c_free(v);
+    v->s = (char*)malloc(len + 1);
+    memcpy(v->s, s, len);
+    v->s[len] = '\0';
+    v->len = len;
+    v->type = C_STRING;
+}
+
+size_t c_get_string_length(const c_value* v) {
+    assert(v != NULL && v->type == C_STRING);
+    return v->len;
+}
+
+const char* c_get_string(const c_value* v) {
+    assert(v != NULL && v->type == C_STRING);
+    return v->s;
 }

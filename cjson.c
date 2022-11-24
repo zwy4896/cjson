@@ -17,6 +17,12 @@
 #define ISDIGIT(ch) ((ch) >= '0' && (ch) <= '9')
 #define ISDIGIT1TO9(ch) ((ch) >= '1' && (ch) <= '9')
 #define PUTC(c, ch) do { *(char*)c_context_push(c, sizeof(char)) = (ch); } while(0)
+#define STRING_ERROR(ret) \
+    do                    \
+    {                     \
+        c->top = head;    \
+        return ret;       \
+    } while (0);
 
 typedef struct
 {
@@ -47,9 +53,27 @@ static void* c_context_pop(c_context* c, size_t size){
     return c->stack + (c->top -= size);
 }
 
+static const char c_parse_hex4(const char* p, unsigned* u){
+    int i;
+    *u = 0;
+    for (i = 0; i < 4; i++){
+        char ch = *p++;
+        *u <<= 4;
+        if (ch >= '0' && ch <= '9')
+            *u |= ch - '0';
+        else if (ch >= 'A' && ch <= 'F')
+            *u |= ch - ('A' - 10);
+        else if (ch >= 'a' && ch <= 'f')
+            *u |= ch - ('a' - 10);
+        else
+            return NULL;
+    }
+    return p;
+}
 static int c_parse_string(c_context* c, c_value* v){
     size_t head = c->top, len;
     const char *p;
+    unsigned u;
     EXCEPT(c, '\"');
     p = c->json;
     for (;;)
@@ -81,6 +105,11 @@ static int c_parse_string(c_context* c, c_value* v){
             PUTC(c, 'r');break;
         case 't':
             PUTC(c, 't');break;
+        case 'u':
+            if(!(p = c_parse_hex4(p, &u)))
+                STRING_ERROR(C_PARSE_INVALID_UNICODE_HEX);
+
+            break;
         default:
             c->top = head;
             return C_PARSE_INVALID_STRING_ESCAPE;
